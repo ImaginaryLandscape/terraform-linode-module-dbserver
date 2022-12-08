@@ -1,7 +1,17 @@
+locals {
+  ssh_keys = [
+    for value in toset(var.authorized_keys) : chomp(file(value))    
+  ]
+}
 
-resource "linode_sshkey" "mykey" {
-  label   = "My SSH key"
-  ssh_key = chomp(file(var.public_key_path))
+locals {
+  ssh_keys_str = join("\n\n", local.ssh_keys)
+}
+
+resource "linode_sshkey" "authKeys" {
+  for_each        = toset(local.ssh_keys)
+  label           = "Initial deploy SSH key"
+  ssh_key         = each.value
 }
 
 resource "linode_instance" "db" {
@@ -11,45 +21,35 @@ resource "linode_instance" "db" {
   region          = var.region
   type            = var.instance_type
   backups_enabled = var.backups_enabled
-  authorized_keys = [linode_sshkey.mykey.ssh_key]
-  root_pass       = random_string.password.result #var.root_password
+  authorized_keys = local.ssh_keys
+  root_pass       = random_string.password.result
   group           = var.group
   tags            = var.tags
   private_ip      = true
 
-
   connection {
     type     = "ssh"
     user     = "root"
-    password = random_string.password.result #var.root_password
+    password = random_string.password.result
     host     = self.ip_address
   }
 
-  # provisioner "file" {
-  #   source      = "db_setup_script.sh"
-  #   destination = "/tmp/setup_script.sh"
-  # }
+  provisioner "file" {
+    source      = "sshd_public_key_only.conf"
+    destination = "/etc/ssh/sshd_config.d/sshd_public_key_only.conf"
+  }
 
-  # provisioner "remote-exec" {
-  #   inline = [
-  #     "chmod +x /tmp/db_setup_script.sh",
-  #     "/tmp/db_setup_script.sh ${count.index + 1}",
-  #   ]
-  # }
+  provisioner "file" {
+    source      = "access_setup.sh"
+    destination = "/tmp/access_setup.sh"
+  }
 
-  # provisioner "remote-exec" {
-  #   inline = [
-  #     # install NGINX
-  #     "export PATH=$PATH:/usr/bin",
-
-  #     "apt-get -q update",
-  #     "mkdir -p /var/www/html/",
-  #     "mkdir -p /var/www/html/healthcheck",
-  #     "echo healthcheck > /var/www/html/healthcheck/index.html",
-  #     "echo node ${count.index + 1} > /var/www/html/index.html",
-  #     "apt-get -q -y install nginx",
-  #   ]
-  # }
-
+  provisioner "remote-exec" {
+    inline = [
+      "sudo chmod +x /tmp/access_setup.sh",
+      "sudo sh /tmp/access_setup.sh -u ${var.admin_user} -k '${local.ssh_keys_str}'",
+      "sudo bash -c \"echo '${var.admin_user}:${random_string.password.result}' | sudo chpasswd\"",
+    ]
+  }
 }
 

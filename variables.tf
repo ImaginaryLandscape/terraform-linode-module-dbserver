@@ -1,5 +1,5 @@
-variable "public_key_path" {}
-variable "root_password" {}
+variable "authorized_keys" {}
+variable "admin_user" {}
 variable "region" {}
 variable "node_count" {}
 variable "instance_type" {}

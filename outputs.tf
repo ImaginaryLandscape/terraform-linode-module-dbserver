@@ -7,3 +7,6 @@ output "db_servers_public_ips" {
 output "db_linode_ids" {
   value = linode_instance.db.*.id
 }
+output "db_servers_passwd" {
+  value = random_string.password.result
+}
