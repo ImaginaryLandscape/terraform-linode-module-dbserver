@@ -10,6 +10,7 @@ resource "random_string" "password" {
   upper   = true
   lower   = true
   number  = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
 variable "backups_enabled" {
