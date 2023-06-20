@@ -44,11 +44,23 @@ resource "linode_instance" "db" {
     destination = "/tmp/access_setup.sh"
   }
 
+    provisioner "file" {
+    source      = "user.txt"
+    destination = "/tmp/user.txt"
+  }
+
+   provisioner "file" {
+    source      = "useradd.sh"
+    destination = "/tmp/useradd.sh"
+  }
+
   provisioner "remote-exec" {
     inline = [
       "sudo chmod +x /tmp/access_setup.sh",
       "sudo sh /tmp/access_setup.sh -u ${var.admin_user} -k '${local.ssh_keys_str}'",
       "sudo bash -c \"echo '${var.admin_user}:${random_string.password.result}' | sudo chpasswd\"",
+      "service sshd restart",
+      "sudo hostnamectl set-hostname '${var.SITE}-db${var.ID + count.index}.${var.DOMAIN}'"
     ]
   }
 }
