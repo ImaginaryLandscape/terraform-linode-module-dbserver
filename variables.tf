@@ -51,3 +51,8 @@ variable "ID" {
   type        = number
   default     = 1
 }
+
+variable "create_users" {
+  type    = bool
+  default = false
+}
